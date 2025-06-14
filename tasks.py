@@ -15,7 +15,7 @@ import requests
 
 PROXY_API_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 PROXY_MODEL = "gpt-4o-mini"
-PROXY_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM5NzZAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.2H2qcMDCMWqavCJMu2jztooubYNzCaDU5ObDnsaSlO4"
+PROXY_API_KEY = "AIPROXY_TOKEN"
 
 DATE_FORMATS = [
     "%Y-%m-%d",    # 2024-03-14
