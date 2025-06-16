@@ -79,9 +79,10 @@ def prevent_file_deletion(path: Path) -> None:
             f"Attempting to delete or truncate a directory: {path}")
 
 
-async def execute_task(task_description: str, user_email: str) -> str:
+async def execute_task(task_description: str) -> str:
     """
     Uses GPT-4 to determine which internal task function to call based on a natural language task description.
+    If no suitable internal function is found, use the LLM to directly generate a response.
     """
     task_map = {
         "run_datagen": run_datagen,
@@ -103,7 +104,6 @@ async def execute_task(task_description: str, user_email: str) -> str:
         "run_convert_markdown_to_html": run_convert_markdown_to_html
     }
 
-    # Prompt to ask GPT to select the correct function name
     task_list = "\n".join(f"- {k.replace('run_', '').replace('_', ' ')} → {k}"
                           for k in task_map.keys())
     prompt = f"""You're an assistant. Based on the user's task description, choose the most appropriate internal method name to execute from the list below. Only return the method name.
@@ -126,11 +126,33 @@ async def execute_task(task_description: str, user_email: str) -> str:
                              })
     response.raise_for_status()
     function_name = response.json()['choices'][0]['message']['content'].strip()
+
     if function_name not in task_map:
-        raise ValueError(
-            f"Could not match task to a valid function: {function_name}")
-    if function_name == "run_datagen":
-        return await task_map[function_name](user_email)
+        # Fallback: No matching function, so just generate a direct reply with the LLM
+        fallback_prompt = f"""You are an assistant. The user asked:
+        "{task_description}"
+
+        Since this doesn't match any internal task, please provide a helpful response directly."""
+        fallback_response = requests.post(PROXY_API_URL,
+                                          headers={
+                                              "Authorization":
+                                              f"Bearer {PROXY_API_KEY}",
+                                              "Content-Type":
+                                              "application/json"
+                                          },
+                                          json={
+                                              "model":
+                                              PROXY_MODEL,
+                                              "messages": [{
+                                                  "role":
+                                                  "user",
+                                                  "content":
+                                                  fallback_prompt
+                                              }]
+                                          })
+        fallback_response.raise_for_status()
+        return fallback_response.json(
+        )['choices'][0]['message']['content'].strip()
 
     func_params = {
         "run_datagen": ["user_email"],
@@ -143,16 +165,15 @@ async def execute_task(task_description: str, user_email: str) -> str:
         "run_extract_credit_card": ["file_name"],
         "run_find_similar_comments": ["file_name"],
         "run_calculate_gold_sales": ["file_name"],
-        "run_fetch_data_from_api": ["api_url", "output_file"],  # B3
+        "run_fetch_data_from_api": ["api_url", "output_file"],
         "run_clone_git_repo_and_commit":
-        ["user_email", "repo_url", "commit_message"],  # B4
-        "run_sql_query_on_db": ["db_file", "sql_query", "output_file"],  # B5
-        "run_scrape_website": ["url", "output_file"],  # B6
+        ["user_email", "repo_url", "commit_message"],
+        "run_sql_query_on_db": ["db_file", "sql_query", "output_file"],
+        "run_scrape_website": ["url", "output_file"],
         "run_compress_or_resize_image":
-        ["input_image", "output_image", "max_size"],  # B7
-        # "run_transcribe_audio": ["input_audio", "output_file"],  # B8
-        "run_convert_markdown_to_html": ["input_md_file",
-                                         "output_html_file"],  # B9
+        ["input_image", "output_image", "max_size"],
+        # "run_transcribe_audio": ["input_audio", "output_file"],
+        "run_convert_markdown_to_html": ["input_md_file", "output_html_file"],
     }
 
     param_list = func_params.get(function_name, [])
@@ -202,6 +223,35 @@ async def execute_task(task_description: str, user_email: str) -> str:
         print(f"Failed to parse parameters JSON: {e}")
         print("Response was:", param_response.text)
         raise
+
+    missing_params = [p for p in param_list if not params.get(p)]
+    if missing_params:
+        # Parameters missing → fallback response
+        fallback_prompt = f"""You are an assistant. The user asked:
+        "{task_description}"
+
+        The system could not extract required parameters {missing_params} for function {function_name}.
+        Please provide a helpful response directly instead."""
+        fallback_response = requests.post(PROXY_API_URL,
+                                          headers={
+                                              "Authorization":
+                                              f"Bearer {PROXY_API_KEY}",
+                                              "Content-Type":
+                                              "application/json"
+                                          },
+                                          json={
+                                              "model":
+                                              PROXY_MODEL,
+                                              "messages": [{
+                                                  "role":
+                                                  "user",
+                                                  "content":
+                                                  fallback_prompt
+                                              }]
+                                          })
+        fallback_response.raise_for_status()
+        return fallback_response.json(
+        )['choices'][0]['message']['content'].strip()
 
     args = [params.get(p) for p in param_list]
 
