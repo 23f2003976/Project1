@@ -75,5 +75,6 @@ async def read(path: str):
         return PlainTextResponse("", status_code=404)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 3000))  # Use Render's PORT or default to 3000 locally
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
