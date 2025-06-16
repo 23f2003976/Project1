@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
 import re
+import os
 import uvicorn
 
 app = FastAPI()
@@ -73,6 +74,6 @@ async def read(path: str):
         traceback.print_exc()
         return PlainTextResponse("", status_code=404)
 
-# To run the app on Replit, ensure it listens on the correct host and port:
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+    port = int(os.environ.get("PORT", 3000))  # Use Render's PORT or default to 3000 locally
+    uvicorn.run(app, host="0.0.0.0", port=port)
