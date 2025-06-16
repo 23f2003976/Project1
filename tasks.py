@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 import asyncio
 import base64
+import os
 from bs4 import BeautifulSoup
 from PIL import Image
 from concurrent.futures import ThreadPoolExecutor
@@ -15,7 +16,7 @@ import requests
 
 PROXY_API_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 PROXY_MODEL = "gpt-4o-mini"
-PROXY_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM5NzZAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.2H2qcMDCMWqavCJMu2jztooubYNzCaDU5ObDnsaSlO4"
+PROXY_API_KEY = os.environ["AIPROXY_TOKEN"]
 
 DATE_FORMATS = [
     "%Y-%m-%d",  # 2024-03-14
